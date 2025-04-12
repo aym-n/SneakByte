@@ -10,6 +10,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "dgram": "^1.0.1"
+    "dgram": "^1.0.1",
+    "ws": "^8.18.1"
   }
 }
