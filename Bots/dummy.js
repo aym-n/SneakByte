@@ -1,7 +1,10 @@
 const dgram = require("dgram");
 const os = require("os");
+const http = require("http");
+const ws = require("ws");
 
-const BOT_ID = process.env.BOT_ID || Math.random().toString(36).substring(2, 10);
+const BOT_ID =
+  process.env.BOT_ID || Math.random().toString(36).substring(2, 10);
 const BOT_NAME = process.env.BOT_NAME || "UnnamedBot";
 const WS_PORT = process.env.WS_PORT || 8081;
 const UDP_PORT = 9999;
@@ -25,8 +28,7 @@ bot.on("message", (msg, rinfo) => {
     const response = {
       id: BOT_ID,
       name: BOT_NAME,
-      language: "node",
-      url: `ws://${getLocalIP()}:${WS_PORT}/`
+      url: `ws://${getLocalIP()}:${WS_PORT}/`,
     };
 
     bot.send(Buffer.from(JSON.stringify(response)), rinfo.port, rinfo.address);
@@ -38,4 +40,32 @@ bot.bind(UDP_PORT, () => {
   console.log(`[${BOT_NAME}] Listening for discovery on UDP ${UDP_PORT}`);
 });
 
+const server = http.createServer();
+const wss = new ws.Server({ server });
 
+wss.on("connection", (ws) => {
+  console.log(`[${BOT_NAME}] Host connected via WebSocket`);
+
+  ws.on("message", (message) => {
+    console.log(`[${BOT_NAME}] Received: ${message}`);
+    const directions = ["up", "down", "left", "right"];
+    const move = directions[Math.floor(Math.random() * directions.length)];
+    ws.send(JSON.stringify({ type: "move", direction: move }));
+    console.log(`[${BOT_NAME}] Sent move: ${move}`);
+  });
+
+  ws.on("close", () => {
+    clearInterval(interval);
+    console.log(`[${BOT_NAME}] Host disconnected`);
+  });
+
+  ws.on("error", (err) => {
+    console.error(`[${BOT_NAME}] WebSocket error: ${err.message}`);
+  });
+});
+
+server.listen(WS_PORT, () => {
+  console.log(
+    `[${BOT_NAME}] WebSocket server running at ws://${getLocalIP()}:${WS_PORT}`,
+  );
+});
