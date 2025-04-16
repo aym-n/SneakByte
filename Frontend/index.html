@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' ws:; style-src 'self' 'unsafe-inline';">
+    <title>Snake Game - Bot Selection</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <h1>Select Snake Bots</h1>
+
+    <div id="status" class="status-info">Connecting to backend...</div>
+
+    <div id="main-content">
+        <div id="bot-selection">
+            <h2>Available Bots:</h2>
+            <form id="bot-form">
+                <div id="bot-list">
+                    <p>Searching for bots...</p>
+                </div>
+                <button type="submit" id="connect-bots-btn" disabled>
+                    Select 2 Bots
+                </button>
+            </form>
+        </div>
+
+        <div id="connection-status" style="display: none;">
+            <h2>Connection Status:</h2>
+            <div id="bot-connection-details"></div>
+             <button id="cancel-connection-btn" style="display: none;">Cancel</button>
+        </div>
+
+        <div id="game-view" style="display: none;">
+            <h2>Game Active</h2>
+            <p id="game-info"></p>
+             <p id="game-end-reason" class="status-error" style="display: none;"></p>
+            <button id="disconnect-btn">Disconnect / New Game</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
