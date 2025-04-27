@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2-Player Snake Game</title>
+  <script src="game.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #121212;
+      color: white;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background-image: linear-gradient(to bottom, #121212, #1e1e1e);
+    }
+    
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      border-radius: 12px;
+      background-color: rgba(30, 30, 30, 0.7);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .score-container {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 400px;
+      margin-bottom: 16px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      padding: 10px 16px;
+      border-radius: 8px;
+      background-color: rgba(0, 0, 0, 0.3);
+    }
+    
+    .player1-score {
+      color: #4ade80; /* bright green */
+      text-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+    }
+    
+    .player2-score {
+      color: #60a5fa; /* bright blue */
+      text-shadow: 0 0 8px rgba(96, 165, 250, 0.6);
+    }
+    
+    #timer {
+      font-family: monospace;
+      font-size: 1.6rem;
+      color: #f5f5f5;
+      background-color: rgba(0, 0, 0, 0.4);
+      padding: 0 12px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .game-grid {
+      border: 6px solid #374151; /* darker border */
+      border-radius: 4px;
+      background-color: #111827;
+      position: relative;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    }
+    
+    .grid-row {
+      display: flex;
+    }
+    
+    .grid-cell {
+      width: 24px;
+      height: 24px;
+      border: 1px solid #1f2937;
+      background-color: #111827;
+      transition: background-color 0.1s ease;
+    }
+    
+    .snake1 {
+      background-color: #4ade80; /* bright green */
+      box-shadow: 0 0 8px #4ade80;
+      border-radius: 4px;
+    }
+    
+    .snake2 {
+      background-color: #60a5fa; /* bright blue */
+      box-shadow: 0 0 8px #60a5fa;
+      border-radius: 4px;
+    }
+    
+    .food {
+      background-color: #f87171; /* bright red */
+      box-shadow: 0 0 12px #f87171;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(0.95); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(0.95); }
+    }
+    
+    .game-over {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 10;
+    }
+    
+    .game-over-modal {
+      background: linear-gradient(145deg, #2d3748, #1a202c);
+      padding: 32px;
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      max-width: 80%;
+    }
+    
+    .game-over-title {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 16px;
+      color: white;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    }
+    
+    .instructions {
+      margin-top: 24px;
+      text-align: center;
+      font-size: 0.95rem;
+      color: #cbd5e0;
+      line-height: 1.6;
+      background-color: rgba(0, 0, 0, 0.2);
+      padding: 12px;
+      border-radius: 8px;
+      max-width: 400px;
+    }
+    
+    .button {
+      background: linear-gradient(to right, #805ad5, #6b46c1);
+      color: white;
+      font-weight: bold;
+      padding: 12px 24px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      margin-top: 24px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+      font-size: 1rem;
+      letter-spacing: 0.5px;
+    }
+    
+    .button:hover {
+      background: linear-gradient(to right, #6b46c1, #553c9a);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 14px rgba(79, 70, 229, 0.5);
+    }
+    
+    .button:active {
+      transform: translateY(1px);
+      box-shadow: 0 2px 8px rgba(79, 70, 229, 0.4);
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div class="score-container">
+      <div class="player1-score">P1: <span id="score1">0</span></div>
+      <div id="timer">60s</div>
+      <div class="player2-score">P2: <span id="score2">0</span></div>
+    </div>
+    
+    <div class="grid-container">
+      <div id="game-grid" class="game-grid"></div>
+    </div>
+  </div>
+</body>
+</html>

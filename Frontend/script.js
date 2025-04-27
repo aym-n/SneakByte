@@ -73,7 +73,14 @@ function connectWebSocket() {
           setStatus("Game started successfully!", "success");
           gameInfoP.textContent = `Playing: ${message.bots.join(" vs ")}`;
           gameEndReasonP.style.display = "none";
-          showView("game-view");
+          
+          // Store game information in sessionStorage before navigating
+          sessionStorage.setItem("gameInProgress", "true");
+          sessionStorage.setItem("botIds", JSON.stringify(message.botIds));
+          sessionStorage.setItem("botNames", JSON.stringify(message.bots));
+          
+          // Now show the game interface
+          showGameInterface();
           break;
 
         case "GAME_START_ERROR":
@@ -95,7 +102,7 @@ function connectWebSocket() {
           }
           connectionAttemptActive = false;
           break;
-        // TODO: recieve moves for each bot
+          
         default:
           console.log("Received unknown message type:", message.type);
       }
@@ -129,6 +136,21 @@ function connectWebSocket() {
     connectionAttemptActive = false;
     setTimeout(connectWebSocket, 5000);
   };
+}
+
+function showGameInterface() {
+  // Check if the game view should be shown in this page
+  // or if we should redirect to a separate game page
+  const useGamePage = true; // Set to true if you want to use a separate page
+  
+  if (useGamePage) {
+    // Navigate to separate game page
+    window.location.href = "game.html";
+  } else {
+    // Show game view in this page
+    showView("game-view");
+    // Initialize game here or send a message to request game initialization
+  }
 }
 
 function showView(viewId) {
@@ -266,7 +288,10 @@ disconnectBtn.addEventListener("click", () => {
   console.log("Disconnect button clicked, returning to selection.");
   showView("bot-selection");
   setStatus("Disconnected. Select bots for a new game.", "info");
-  // TODO: inform backend incase game is canceled
+  // Inform backend the game is canceled
+  if (isSocketOpen()) {
+    socket.send(JSON.stringify({ type: "CANCEL_GAME" }));
+  }
 });
 
 connectWebSocket();
