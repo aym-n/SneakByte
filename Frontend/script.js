@@ -139,17 +139,13 @@ function connectWebSocket() {
 }
 
 function showGameInterface() {
-  // Check if the game view should be shown in this page
-  // or if we should redirect to a separate game page
-  const useGamePage = true; // Set to true if you want to use a separate page
+  const useGamePage = true; 
   
   if (useGamePage) {
     // Navigate to separate game page
     window.location.href = "game.html";
   } else {
-    // Show game view in this page
     showView("game-view");
-    // Initialize game here or send a message to request game initialization
   }
 }
 
