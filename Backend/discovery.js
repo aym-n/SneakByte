@@ -16,6 +16,7 @@ let frontendWS = null;
 let broadcastIntervalID = null;
 let gameActive = false;
 let activeGameBotIds = [];
+let latestGameState = null;
 
 const wss = new WebSocket.Server({ port: FRONTEND_WS_PORT });
 console.log(`[FRONTEND WS] server started on port ${FRONTEND_WS_PORT}`);
@@ -37,7 +38,10 @@ wss.on("connection", (ws) => {
             // This handles the case when the page changes but we want to maintain the game
             startGame(data.botIds);
           } else {
-            console.warn("[Frontend WS] Invalid botIds for RECONNECT_GAME:", data);
+            console.warn(
+              "[Frontend WS] Invalid botIds for RECONNECT_GAME:",
+              data,
+            );
           }
           break;
         case "START_GAME":
@@ -47,17 +51,18 @@ wss.on("connection", (ws) => {
             console.warn("[Frontend WS] Invalid botIds for START_GAME:", data);
           }
           break;
-          
+
         case "GAME_STATE":
-          // Forward game state to bots
-          forwardGameStateToBots(data);
+          latestGameState = data;
           break;
-          
+
         case "GAME_OVER":
-          console.log(`[GAME] Game over: ${data.winner} wins. Reason: ${data.reason}`);
+          console.log(
+            `[GAME] Game over: ${data.winner} wins. Reason: ${data.reason}`,
+          );
           stopGame(data.reason);
           break;
-          
+
         case "CANCEL_GAME":
           if (data.reason === "navigating to home") {
             stopGame("navigating to home");
@@ -65,21 +70,23 @@ wss.on("connection", (ws) => {
             stopGame("Game canceled by user");
           }
           break;
-          
+
         case "REQUEST_NEW_GAME":
           if (activeGameBotIds.length === 2) {
             startGame(activeGameBotIds);
           } else {
             console.log("[GAME] Cannot restart game, no active bot IDs");
             if (frontendWS && frontendWS.readyState === WebSocket.OPEN) {
-              frontendWS.send(JSON.stringify({
-                type: "GAME_START_ERROR",
-                message: "No active bots to restart game with"
-              }));
+              frontendWS.send(
+                JSON.stringify({
+                  type: "GAME_START_ERROR",
+                  message: "No active bots to restart game with",
+                }),
+              );
             }
           }
           break;
-          
+
         default:
           console.warn("[Frontend WS] Unknown message type:", data.type);
           break;
@@ -88,7 +95,7 @@ wss.on("connection", (ws) => {
       console.error(
         "[Frontend WS] Failed to parse message or invalid message format:",
         message.toString(),
-        err
+        err,
       );
     }
   });
@@ -119,27 +126,6 @@ function sendBotList() {
   }
 }
 
-function forwardGameStateToBots(gameState) {
-  if (!gameActive) return;
-  
-  for (const [botId, ws] of activeBots.entries()) {
-    if (ws.readyState === WebSocket.OPEN) {
-      // Only send relevant data to each bot
-      const botNum = activeGameBotIds.indexOf(botId) + 1;
-      const botData = {
-        type: "GAME_STATE",
-        mySnake: botNum === 1 ? gameState.snake1 : gameState.snake2,
-        opponentSnake: botNum === 1 ? gameState.snake2 : gameState.snake1,
-        food: gameState.food,
-        myScore: botNum === 1 ? gameState.score1 : gameState.score2,
-        opponentScore: botNum === 1 ? gameState.score2 : gameState.score1,
-        timer: gameState.timer
-      };
-      
-      ws.send(JSON.stringify(botData));
-    }
-  }
-}
 
 function startDiscovery() {
   if (broadcastIntervalID) return;
@@ -179,7 +165,7 @@ host.on("message", (msg, rinfo) => {
   bots.set(id, botInfo);
   if (isNew) {
     console.log(
-      `[DISCOVERY] Found new bot: ${data.name} (${id}) @ ${data.url}`
+      `[DISCOVERY] Found new bot: ${data.name} (${id}) @ ${data.url}`,
     );
     sendBotList();
   }
@@ -195,9 +181,9 @@ function sendDiscovery() {
     "255.255.255.255",
     () => {
       console.log(
-        `[DISCOVERY] Sent broadcast at ${new Date().toLocaleTimeString()}`
+        `[DISCOVERY] Sent broadcast at ${new Date().toLocaleTimeString()}`,
       );
-    }
+    },
   );
 }
 
@@ -219,7 +205,7 @@ function cleanBots() {
 
 function startGame(botIds) {
   console.log(
-    `[GAME] Attempting to start game with bots: ${botIds.join(", ")}`
+    `[GAME] Attempting to start game with bots: ${botIds.join(", ")}`,
   );
   stopGame("Starting new game");
 
@@ -228,7 +214,7 @@ function startGame(botIds) {
 
   if (!bot1Info || !bot2Info) {
     console.error(
-      "[GAME] Could not find information for one or both selected bots."
+      "[GAME] Could not find information for one or both selected bots.",
     );
 
     if (frontendWS && frontendWS.readyState === WebSocket.OPEN) {
@@ -236,7 +222,7 @@ function startGame(botIds) {
         JSON.stringify({
           type: "GAME_START_ERROR",
           message: "Selected bot(s) not found or timed out.",
-        })
+        }),
       );
     }
     return;
@@ -258,8 +244,8 @@ function startGame(botIds) {
       JSON.stringify({
         type: "GAME_STARTED",
         bots: [bot1Info.name, bot2Info.name],
-        botIds: [bot1Info.id, bot2Info.id]
-      })
+        botIds: [bot1Info.id, bot2Info.id],
+      }),
     );
   }
 }
@@ -269,43 +255,62 @@ function connectToBot(botInfo, playerNum) {
 
   ws.on("open", () => {
     console.log(`[GAME WS] Connected to ${botInfo.name}`);
-    
+
     // Send initial game config to the bot
-    ws.send(JSON.stringify({
-      type: "GAME_CONFIG",
-      playerNum: playerNum,
-      gridSize: 20,
-      gameSpeed: 150
-    }));
-    
-    // Start requesting moves
+    ws.send(
+      JSON.stringify({
+        type: "GAME_CONFIG",
+        playerNum: playerNum,
+        gridSize: 20,
+        gameSpeed: 150,
+      }),
+    );
+
     const interval = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN && gameActive) {
-        ws.send(JSON.stringify({ type: "MOVE_REQ" }));
+      if (ws.readyState === WebSocket.OPEN && gameActive && latestGameState) {
+        const botNum = playerNum;
+        const moveReq = {
+          type: "MOVE_REQ",
+          mySnake:
+            botNum === 1 ? latestGameState.snake1 : latestGameState.snake2,
+          opponentSnake:
+            botNum === 1 ? latestGameState.snake2 : latestGameState.snake1,
+          food: latestGameState.food,
+          myScore:
+            botNum === 1 ? latestGameState.score1 : latestGameState.score2,
+          opponentScore:
+            botNum === 1 ? latestGameState.score2 : latestGameState.score1,
+          timer: latestGameState.timer,
+        };
+        ws.send(JSON.stringify(moveReq));
       } else if (!gameActive) {
         clearInterval(interval);
       }
     }, 200);
-    ws.gameUpdateInterval = interval;
   });
 
   ws.on("message", (message) => {
     try {
       const data = JSON.parse(message.toString());
       console.log(`[GAME WS] Message from ${botInfo.name}:`, data);
-      
+
       if (data.type === "MOVE_RESP" && data.direction && gameActive) {
         // Forward move to frontend
         if (frontendWS && frontendWS.readyState === WebSocket.OPEN) {
-          frontendWS.send(JSON.stringify({
-            type: "BOT_MOVE",
-            botId: botInfo.id,
-            direction: data.direction
-          }));
+          frontendWS.send(
+            JSON.stringify({
+              type: "BOT_MOVE",
+              botId: botInfo.id,
+              direction: data.direction,
+            }),
+          );
         }
       }
     } catch (err) {
-      console.error(`[GAME WS] Invalid message from ${botInfo.name}:`, message.toString());
+      console.error(
+        `[GAME WS] Invalid message from ${botInfo.name}:`,
+        message.toString(),
+      );
     }
   });
 
@@ -329,27 +334,26 @@ function connectToBot(botInfo, playerNum) {
 
 function stopGame(reason = "Game stopped") {
   if (!gameActive) return;
-  
+
   console.log(`[GAME] Stopping game: ${reason}`);
   gameActive = false;
-  
+
   for (const [id, ws] of activeBots.entries()) {
     if (ws.gameUpdateInterval) {
       clearInterval(ws.gameUpdateInterval);
     }
-    
+
     if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        type: "GAME_ENDED",
-        reason: reason
-      }));
+      ws.send(
+        JSON.stringify({
+          type: "GAME_ENDED",
+          reason: reason,
+        }),
+      );
     }
-    
+
     // Only close connections if the reason is not related to navigation or disconnection
-    
   }
-  
-  
 
   if (frontendWS && frontendWS.readyState === WebSocket.OPEN) {
     try {
@@ -357,15 +361,15 @@ function stopGame(reason = "Game stopped") {
         JSON.stringify({
           type: "GAME_ENDED",
           reason: reason,
-        })
+        }),
       );
     } catch (e) {
       console.warn(
-        "[Frontend WS] Could not send GAME_ENDED message, frontend likely already closed."
+        "[Frontend WS] Could not send GAME_ENDED message, frontend likely already closed.",
       );
     }
   }
-  
+
   startDiscovery();
 }
 
